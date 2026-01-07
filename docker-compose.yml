@@ -1,0 +1,45 @@
+services:
+  authelia:
+    image: authelia/authelia:latest
+    container_name: authelia
+    restart: ${ALWAYS_RESTART}
+    entrypoint: ["/scripts/entrypoint.sh"]
+    volumes:
+      - ./docker/authelia/files/config:/config
+      - ./docker/authelia/files/scripts:/scripts
+      - ./data:/data
+    environment:
+      - TZ=UTC
+      - HOST=${HOST}
+      - MODE=${MODE}
+      - PUBLIC_PORT=${PUBLIC_PORT}
+      - USE_SMTP=${USE_SMTP}
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_USERNAME=${SMTP_USERNAME}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+    networks:
+      - authelia-net
+    healthcheck:
+      test: ["CMD", "authelia", "healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  nginx:
+    image: nginx:alpine
+    container_name: auth-nginx
+    restart: ${ALWAYS_RESTART}
+    ports:
+      - "${PUBLIC_PORT}:443"
+    volumes:
+      - ./docker/nginx/files/conf.d:/etc/nginx/conf.d
+      - ./certs:/etc/nginx/certs
+    networks:
+      - authelia-net
+    depends_on:
+      - authelia
+
+networks:
+  authelia-net:
+    driver: bridge

@@ -1,0 +1,49 @@
+###############################################################
+#                   Authelia Configuration                    #
+###############################################################
+
+server:
+  host: 0.0.0.0
+  port: 9091
+
+log:
+  level: info
+
+identity_validation:
+  reset_password:
+    jwt_secret: unsecure_jwt_secret_change_me
+
+authentication_backend:
+  file:
+    path: /data/users.yml
+    password:
+      algorithm: argon2id
+
+access_control:
+  default_policy: deny
+  rules:
+    # Rules applied to everyone
+    - domain: '*.{{ env "HOST" }}'
+      policy: one_factor
+
+session:
+  name: authelia_session
+  secret: unsecure_session_secret_change_me
+  expiration: 3600 # 1 hour
+  inactivity: 300 # 5 minutes
+  cookies:
+    - domain: '{{ env "HOST" }}'
+      authelia_url: 'https://auth.{{ env "HOST" }}:{{ env "PUBLIC_PORT" }}'
+      default_redirection_url: 'https://{{ env "HOST" }}:{{ env "PUBLIC_PORT" }}'
+
+regulation:
+  max_retries: 3
+  find_time: 120
+  ban_time: 300
+
+storage:
+  encryption_key: unsecure_encryption_key_change_me
+  local:
+    path: /data/db.sqlite3
+
+# Notifier is configured in entrypoint.sh via separate config file
