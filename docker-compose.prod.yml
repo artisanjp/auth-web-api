@@ -1,0 +1,71 @@
+services:
+  core:
+    image: authentik/server:2025.10
+    container_name: artisan-auth-core
+    restart: unless-stopped
+    command: server
+    environment:
+      AUTHENTIK_SECRET_KEY: ${AUTHENTIK_SECRET_KEY}
+      AUTHENTIK_ERROR_REPORTING__ENABLED: "false"
+      AUTHENTIK_POSTGRESQL__HOST: ${POSTGRES_HOST:-postgres}
+      AUTHENTIK_POSTGRESQL__NAME: ${POSTGRES_DB:-authentik}
+      AUTHENTIK_POSTGRESQL__USER: ${POSTGRES_USER:-authentik}
+      AUTHENTIK_POSTGRESQL__PASSWORD: ${POSTGRES_PASSWORD}
+      # Email configuration
+      AUTHENTIK_EMAIL__HOST: ${SMTP_HOST:-postfix}
+      AUTHENTIK_EMAIL__PORT: ${SMTP_PORT:-25}
+      AUTHENTIK_EMAIL__USERNAME: ${SMTP_USERNAME:-}
+      AUTHENTIK_EMAIL__PASSWORD: ${SMTP_PASSWORD:-}
+      AUTHENTIK_EMAIL__USE_TLS: ${SMTP_USE_TLS:-false}
+      AUTHENTIK_EMAIL__USE_SSL: ${SMTP_USE_SSL:-false}
+      AUTHENTIK_EMAIL__FROM: ${SMTP_FROM:-noreply@auth.artisan-tools.com}
+    volumes:
+      - artisan-auth-media:/media
+      - artisan-auth-templates:/templates
+    networks:
+      - artisan-hq-network-01
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.auth-web-api.rule=Host(`auth.artisan-tools.com`)"
+      - "traefik.http.routers.auth-web-api.entrypoints=websecure"
+      - "traefik.http.routers.auth-web-api.tls=true"
+      - "traefik.http.services.auth-web-api.loadbalancer.server.port=9000"
+      - "traefik.docker.network=artisan-hq-network-01"
+
+  worker:
+    image: authentik/server:2025.10
+    container_name: artisan-auth-worker
+    restart: unless-stopped
+    command: worker
+    environment:
+      AUTHENTIK_SECRET_KEY: ${AUTHENTIK_SECRET_KEY}
+      AUTHENTIK_ERROR_REPORTING__ENABLED: "false"
+      AUTHENTIK_POSTGRESQL__HOST: ${POSTGRES_HOST:-postgres}
+      AUTHENTIK_POSTGRESQL__NAME: ${POSTGRES_DB:-authentik}
+      AUTHENTIK_POSTGRESQL__USER: ${POSTGRES_USER:-authentik}
+      AUTHENTIK_POSTGRESQL__PASSWORD: ${POSTGRES_PASSWORD}
+      # Email configuration
+      AUTHENTIK_EMAIL__HOST: ${SMTP_HOST:-postfix}
+      AUTHENTIK_EMAIL__PORT: ${SMTP_PORT:-25}
+      AUTHENTIK_EMAIL__USERNAME: ${SMTP_USERNAME:-}
+      AUTHENTIK_EMAIL__PASSWORD: ${SMTP_PASSWORD:-}
+      AUTHENTIK_EMAIL__USE_TLS: ${SMTP_USE_TLS:-false}
+      AUTHENTIK_EMAIL__USE_SSL: ${SMTP_USE_SSL:-false}
+      AUTHENTIK_EMAIL__FROM: ${SMTP_FROM:-noreply@auth.artisan-tools.com}
+    volumes:
+      - artisan-auth-media:/media
+      - artisan-auth-templates:/templates
+    networks:
+      - artisan-hq-network-01
+    labels:
+      - "traefik.enable=false"
+
+networks:
+  artisan-hq-network-01:
+    external: true
+
+volumes:
+  artisan-auth-media:
+    driver: local
+  artisan-auth-templates:
+    driver: local

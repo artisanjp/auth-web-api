@@ -1,0 +1,91 @@
+#!/bin/bash
+
+# Help script - Display usage information for all scripts
+
+cat << 'EOF'
+Auth Web API - Docker Management Scripts
+============================================
+
+Available Scripts:
+------------------
+
+up - Start Docker containers
+   Usage: scripts/up <dev|prod> <service1> [service2] ... | all
+   Examples:
+     scripts/up dev all            # Start all dev containers
+     scripts/up prod all           # Start all prod containers
+     scripts/up dev auth           # Start only core container
+     scripts/up dev db auth        # Start postgres and core
+
+down - Stop Docker containers
+   Usage: scripts/down <dev|prod> <service1> [service2] ... | all
+   Examples:
+     scripts/down dev all          # Stop all dev containers
+     scripts/down prod all         # Stop all prod containers
+     scripts/down dev auth         # Stop only core container
+     scripts/down dev all --volumes  # Stop all and remove volumes
+
+restart - Restart Docker containers
+   Usage: scripts/restart <dev|prod> <service1> [service2] ... | all
+   Examples:
+     scripts/restart dev all       # Restart all dev containers
+     scripts/restart prod all      # Restart all prod containers
+     scripts/restart dev auth      # Restart only core container
+
+build - Build Docker images
+   Usage: scripts/build <dev|prod> <service1> [service2] ... | all
+   Examples:
+     scripts/build dev all         # Build all dev images
+     scripts/build dev all --pull  # Build all with latest base images
+     scripts/build dev auth        # Build only core image
+
+logs - Show container logs
+   Usage: scripts/logs <dev|prod> <service|all> [options]
+   Examples:
+     scripts/logs dev all          # View all dev logs
+     scripts/logs prod all -f      # Follow all prod logs
+     scripts/logs dev auth --tail 500    # Last 500 lines of core logs
+     scripts/logs dev all --since 10m    # Logs from last 10 minutes
+
+reset - Remove Docker volumes (with confirmation)
+   Usage: scripts/reset <dev|prod> <volume|all>
+   Examples:
+     scripts/reset dev postgres    # Remove postgres volume (dev only)
+     scripts/reset dev media       # Remove media volume
+     scripts/reset dev all         # Remove all dev volumes
+     scripts/reset prod all        # Remove all prod volumes
+
+makecert - Generate self-signed TLS certificates (dev only)
+   Usage: scripts/makecert [domain]
+
+help - Display this help message
+   Usage: scripts/help
+
+------------------
+Service Aliases:
+  auth   -> core        (Authentik server)
+  db     -> postgres    (PostgreSQL database, dev only)
+  mail   -> mailpit     (Email testing, dev only)
+  all    -> all services (env-dependent)
+
+Direct Service Names:
+  core, worker, postgres, nginx, mailpit
+
+Dev Services (all):
+  postgres, core, worker, nginx, mailpit
+
+Prod Services (all):
+  core, worker
+  (Traefik handles TLS/routing externally)
+
+Dev Volumes:
+  postgres   (PostgreSQL data)
+  media      (Authentik media files)
+  templates  (Authentik templates)
+
+Prod Volumes:
+  media      (Authentik media files)
+  templates  (Authentik templates)
+
+============================================
+EOF

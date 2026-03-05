@@ -1,0 +1,84 @@
+#!/bin/bash
+
+# Docker Compose Service Management Script - RESTART
+# Usage: scripts/restart <environment> <service1> [service2] [service3] ...
+#
+# Environments: dev, prod
+# Services: auth, db, mail, all (or direct names: core, postgres, worker, nginx, mailpit)
+#
+# Examples:
+#   scripts/restart dev all        => Restart all services in dev
+#   scripts/restart prod all       => Restart all services in prod
+#   scripts/restart dev auth       => Restart only core service in dev
+
+set -e
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+NC='\033[0m'
+
+print_info() { echo -e "${BLUE}[info]${NC} $1"; }
+print_success() { echo -e "${GREEN}[ok]${NC} $1"; }
+print_error() { echo -e "${RED}[error]${NC} $1" >&2; }
+
+show_usage() {
+    echo "Usage: $0 <environment> <service1> [service2] [service3] ..."
+    echo ""
+    echo "Environments:"
+    echo "  dev   - Development environment"
+    echo "  prod  - Production environment"
+    echo ""
+    echo "Services:"
+    echo "  auth  - Authentik server (maps to 'core')"
+    echo "  db    - PostgreSQL database (maps to 'postgres', dev only)"
+    echo "  mail  - Mailpit email testing (maps to 'mailpit', dev only)"
+    echo "  all   - All services (env-dependent)"
+    echo "  core, worker, postgres, nginx, mailpit - Direct service names"
+    echo ""
+    echo "Examples:"
+    echo "  $0 dev all        # Restart all dev services"
+    echo "  $0 prod all       # Restart all prod services"
+    echo "  $0 dev auth       # Restart only core service in dev"
+}
+
+main() {
+    if [ $# -lt 2 ]; then
+        print_error "Insufficient arguments provided"
+        echo ""
+        show_usage
+        exit 1
+    fi
+
+    local environment=$1
+    shift
+    local service_args=("$@")
+
+    print_info "=== RESTARTING SERVICES ==="
+    print_info "Environment: $environment"
+    print_info "Services: ${service_args[*]}"
+    echo ""
+
+    print_info "Step 1/2: Stopping services..."
+    echo ""
+
+    if ! scripts/down "$environment" "${service_args[@]}"; then
+        print_error "Failed to stop services"
+        exit 1
+    fi
+
+    echo ""
+    print_success "Services stopped successfully!"
+    echo ""
+
+    print_info "Step 2/2: Starting services and showing logs..."
+    echo ""
+
+    if ! scripts/up "$environment" "${service_args[@]}"; then
+        print_error "Failed to start services"
+        exit 1
+    fi
+}
+
+main "$@"

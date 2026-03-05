@@ -1,0 +1,255 @@
+#!/bin/bash
+
+# Docker Compose Service Management Script - LOGS
+# Usage: scripts/logs <environment> <service1> [service2] [service3] ...
+#
+# Environments: dev, prod
+# Services: auth, db, mail, all (or direct names: core, postgres, worker, nginx, mailpit)
+#
+# Examples:
+#   scripts/logs dev all           => View logs for all services in dev
+#   scripts/logs prod all          => View logs for all services in prod
+#   scripts/logs dev auth -f       => Follow core service logs in dev
+
+set -e
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m'
+
+print_info() { echo -e "${BLUE}[info]${NC} $1"; }
+print_success() { echo -e "${GREEN}[ok]${NC} $1"; }
+print_warning() { echo -e "${YELLOW}[warn]${NC} $1" >&2; }
+print_error() { echo -e "${RED}[error]${NC} $1" >&2; }
+
+show_usage() {
+    echo "Usage: $0 <environment> <service1> [service2] [service3] ..."
+    echo ""
+    echo "Environments:"
+    echo "  dev   - Development environment"
+    echo "  prod  - Production environment"
+    echo ""
+    echo "Services:"
+    echo "  auth  - Authentik server (maps to 'core')"
+    echo "  db    - PostgreSQL database (maps to 'postgres', dev only)"
+    echo "  mail  - Mailpit email testing (maps to 'mailpit', dev only)"
+    echo "  all   - All services (env-dependent)"
+    echo "  core, worker, postgres, nginx, mailpit - Direct service names"
+    echo ""
+    echo "Options:"
+    echo "  -f, --follow       # Follow log output (live tail)"
+    echo "  -t, --timestamps   # Show timestamps"
+    echo "  --tail N           # Show last N lines (default: all)"
+    echo "  --since TIME       # Show logs since timestamp (e.g., 10m, 1h)"
+    echo ""
+    echo "Examples:"
+    echo "  $0 dev all           # View all dev logs"
+    echo "  $0 prod all -f       # Follow all prod logs"
+    echo "  $0 dev auth --tail 500  # Last 500 lines of core logs"
+    echo "  $0 dev all --since 10m  # Logs from last 10 minutes"
+}
+
+validate_environment() {
+    local env=$1
+    if [[ "$env" != "dev" && "$env" != "prod" ]]; then
+        print_error "Invalid environment: $env"
+        print_info "Valid environments: dev, prod"
+        exit 1
+    fi
+}
+
+map_services() {
+    local environment=$1
+    shift
+    local services=()
+
+    for service in "$@"; do
+        case "$service" in
+            "auth")
+                services+=("core")
+                ;;
+            "db")
+                if [ "$environment" == "prod" ]; then
+                    print_error "'db' alias is dev-only (no postgres in prod)"
+                    exit 1
+                fi
+                services+=("postgres")
+                ;;
+            "mail")
+                if [ "$environment" == "prod" ]; then
+                    print_error "'mail' alias is dev-only (no mailpit in prod)"
+                    exit 1
+                fi
+                services+=("mailpit")
+                ;;
+            "all")
+                if [ "$environment" == "prod" ]; then
+                    services+=("core" "worker")
+                else
+                    services+=("postgres" "core" "worker" "nginx" "mailpit")
+                fi
+                ;;
+            "core"|"worker"|"postgres"|"nginx"|"mailpit")
+                services+=("$service")
+                ;;
+            *)
+                print_warning "Unknown service: $service (will pass through as-is)"
+                services+=("$service")
+                ;;
+        esac
+    done
+
+    if [ ${#services[@]} -gt 0 ]; then
+        printf '%s\n' "${services[@]}" | awk '!seen[$0]++'
+    fi
+}
+
+parse_flags() {
+    local flags=()
+    local i=0
+    local args=("$@")
+
+    while [ $i -lt ${#args[@]} ]; do
+        local arg="${args[$i]}"
+        case "$arg" in
+            "-f"|"--follow")
+                flags+=("--follow")
+                ;;
+            "-t"|"--timestamps")
+                flags+=("--timestamps")
+                ;;
+            "--tail")
+                if [ $((i + 1)) -lt ${#args[@]} ]; then
+                    flags+=("--tail" "${args[$((i + 1))]}")
+                    ((i++))
+                fi
+                ;;
+            --tail=*)
+                flags+=("$arg")
+                ;;
+            "--since")
+                if [ $((i + 1)) -lt ${#args[@]} ]; then
+                    flags+=("--since" "${args[$((i + 1))]}")
+                    ((i++))
+                fi
+                ;;
+            --since=*)
+                flags+=("$arg")
+                ;;
+            "--until")
+                if [ $((i + 1)) -lt ${#args[@]} ]; then
+                    flags+=("--until" "${args[$((i + 1))]}")
+                    ((i++))
+                fi
+                ;;
+            --until=*)
+                flags+=("$arg")
+                ;;
+        esac
+        ((i++))
+    done
+
+    if [ ${#flags[@]} -gt 0 ]; then
+        printf '%s\n' "${flags[@]}"
+    fi
+}
+
+main() {
+    if [ $# -lt 2 ]; then
+        print_error "Insufficient arguments provided"
+        echo ""
+        show_usage
+        exit 1
+    fi
+
+    local environment=$1
+    shift
+    local all_args=("$@")
+
+    validate_environment "$environment"
+
+    local flags=()
+    mapfile -t flags < <(parse_flags "${all_args[@]}")
+
+    local service_args=()
+    local skip_next=false
+
+    for arg in "${all_args[@]}"; do
+        if [ "$skip_next" = true ]; then
+            skip_next=false
+            continue
+        fi
+
+        case "$arg" in
+            "-f"|"--follow"|"-t"|"--timestamps")
+                ;;
+            "--tail"|"--since"|"--until")
+                skip_next=true
+                ;;
+            --tail=*|--since=*|--until=*)
+                ;;
+            *)
+                service_args+=("$arg")
+                ;;
+        esac
+    done
+
+    if [ ${#service_args[@]} -eq 0 ]; then
+        print_error "No services specified (only flags provided)"
+        echo ""
+        show_usage
+        exit 1
+    fi
+
+    local mapped_services
+    mapfile -t mapped_services < <(map_services "$environment" "${service_args[@]}")
+
+    if [ ${#mapped_services[@]} -eq 0 ]; then
+        print_error "No valid services specified"
+        echo ""
+        show_usage
+        exit 1
+    fi
+
+    local compose_file="docker-compose.${environment}.yml"
+
+    if [ ! -f "$compose_file" ]; then
+        print_error "Compose file not found: $compose_file"
+        exit 1
+    fi
+
+    local cmd=(docker compose -f "$compose_file" logs "${flags[@]}" "${mapped_services[@]}")
+    local has_follow=false
+    for flag in "${flags[@]}"; do
+        if [ "$flag" == "--follow" ]; then
+            has_follow=true
+            break
+        fi
+    done
+
+    print_info "Environment: $environment"
+    print_info "Services: ${mapped_services[*]}"
+    if [ ${#flags[@]} -gt 0 ]; then
+        print_info "Flags: ${flags[*]}"
+    fi
+    print_info "Command: ${cmd[*]}"
+    echo ""
+
+    print_info "Viewing logs..."
+    echo ""
+    if "${cmd[@]}"; then
+        if [ "$has_follow" = true ]; then
+            print_info "Log following stopped"
+        else
+            print_success "Logs displayed successfully!"
+        fi
+    else
+        print_error "Failed to view logs"
+        exit 1
+    fi
+}
+
+main "$@"
