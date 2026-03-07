@@ -145,6 +145,17 @@ To apply, go to **Admin → System → Brands**, edit the brand, and set the pat
 
 After adding or changing files, restart the services for the bind-mount to take effect.
 
+### Changing the welcome message
+
+The "Welcome to authentik!" text on the sign-in page is the **flow title**, not a brand setting. To change it:
+
+1. Go to **Admin → Flows and Stages → Flows**
+2. Edit the **default-authentication-flow** (or whichever flow is used for login)
+3. Change the **Title** field to your desired message
+4. Click **Update**
+
+Repeat for any other flows that display a welcome message (e.g., enrollment, recovery).
+
 ## Environment Variables
 
 See `.env.example` for all options with descriptions.
