@@ -123,6 +123,28 @@ All scripts require an environment as the first argument: `dev` or `prod`.
 | `mail` | `mailpit` | Dev only |
 | `all` | env-dependent | Dev: all 5 services; Prod: core + worker |
 
+## Custom Branding
+
+Place brand assets in `media/custom/`. These files are bind-mounted into the Authentik containers at `/media/custom/` and served at `https://<your-domain>/media/custom/`.
+
+Current assets:
+
+| File | Purpose |
+|---|---|
+| `media/custom/icon.png` | Brand icon (favicon, app icon) |
+| `media/custom/icon_left_brand.svg` | Logo shown in the top-left of the UI |
+| `media/custom/flow_background.png` | Background image for login/flow pages |
+
+To apply, go to **Admin → System → Brands**, edit the brand, and set the paths:
+
+| Field | Value |
+|---|---|
+| Icon | `/media/custom/icon.png` |
+| Logo | `/media/custom/icon_left_brand.svg` |
+| Flow background | `/media/custom/flow_background.png` |
+
+After adding or changing files, restart the services for the bind-mount to take effect.
+
 ## Environment Variables
 
 See `.env.example` for all options with descriptions.
