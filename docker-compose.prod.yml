@@ -20,7 +20,7 @@ services:
       AUTHENTIK_EMAIL__USE_SSL: ${SMTP_USE_SSL:-false}
       AUTHENTIK_EMAIL__FROM: ${SMTP_FROM:-noreply@auth.artisan-tools.com}
     volumes:
-      - artisan-auth-media:/media
+      - ./media:/media
       - artisan-auth-templates:/templates
     networks:
       - artisan-hq-network-01
@@ -56,7 +56,7 @@ services:
       AUTHENTIK_EMAIL__USE_SSL: ${SMTP_USE_SSL:-false}
       AUTHENTIK_EMAIL__FROM: ${SMTP_FROM:-noreply@auth.artisan-tools.com}
     volumes:
-      - artisan-auth-media:/media
+      - ./media:/media
       - artisan-auth-templates:/templates
     networks:
       - artisan-hq-network-01
@@ -68,7 +68,5 @@ networks:
     external: true
 
 volumes:
-  artisan-auth-media:
-    driver: local
   artisan-auth-templates:
     driver: local
