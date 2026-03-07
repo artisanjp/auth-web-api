@@ -21,9 +21,20 @@ How admins generate invite tokens/links.
 |---|---|---|---|
 | `name` | string | Label, e.g. `invite-jane-2026-03` | Use naming convention |
 | `expires` | datetime | When link expires. `null` = never | 7 days |
-| `single_use` | boolean | Consumed after first use | `true` for named invites |
+| `single_use` | boolean | Consumed after first use | **`false`** — see warning below |
 | `fixed_data` | JSON | Attributes passed to enrollment flow | `{"email": "jane@co.com", "username": "jane@co.com"}` |
 | `flow` | UUID | Override enrollment flow (optional) | Leave unset for default |
+
+### Warning: Authentik Invitation Flow is Broken (as of 2025.10)
+
+Authentik's invitation system has a critical bug: **invitations are deleted on first page load regardless of the `single_use` setting**. Even with `single_use: false`, the invite is consumed the moment the link is opened — not when registration completes.
+
+Known upstream issues (all closed without fix):
+- [#12770](https://github.com/goauthentik/authentik/issues/12770) — Invitations deleted after first use even with single_use disabled
+- [#16587](https://github.com/goauthentik/authentik/issues/16587) — Single-use invite consumed on page load, not on registration
+- [#7119](https://github.com/goauthentik/authentik/issues/7119) — Policy errors after invite stage deletes the invite
+
+**Recommended alternative:** Skip the invite flow entirely. Instead, use the Authentik API to create users directly and trigger a password reset email, or build a custom onboarding service that calls the `/api/v3/core/users/` endpoint.
 
 **Invite URL format:** `https://auth.artisan-tools.com/if/flow/enrollment-invite/?itoken=<pk>`
 
