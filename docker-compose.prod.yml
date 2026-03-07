@@ -30,6 +30,9 @@ services:
       - "traefik.http.routers.auth-web-api.entrypoints=websecure"
       - "traefik.http.routers.auth-web-api.tls=true"
       - "traefik.http.services.auth-web-api.loadbalancer.server.port=9000"
+      - "traefik.http.services.auth-web-api.loadbalancer.server.scheme=http"
+      - "traefik.http.middlewares.auth-web-api-headers.headers.customrequestheaders.X-Forwarded-Proto=https"
+      - "traefik.http.routers.auth-web-api.middlewares=auth-web-api-headers"
       - "traefik.docker.network=artisan-hq-network-01"
 
   worker:
