@@ -78,6 +78,7 @@ Internet -> Traefik (TLS termination, port 443)
               |
               +-- artisan-auth-core (port 9000, HTTP)
               +-- artisan-auth-worker (no HTTP, background tasks)
+              +-- artisan-auth-ldap (host ports 389/636 -> 3389/6636, NOT via Traefik)
               +-- postgres (external database)
               +-- postfix (external SMTP relay)
 ```

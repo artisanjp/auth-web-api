@@ -20,6 +20,7 @@ Artisan internal central authentication API, built on [Authentik](https://goauth
 |---|---|---|
 | Authentik Server | `artisan-auth-core` | Authentik authentication server |
 | Authentik Worker | `artisan-auth-worker` | Background task worker |
+| Authentik LDAP Outpost | `artisan-auth-ldap` | LDAP/LDAPS endpoint (host ports 389/636) |
 
 Production uses an external PostgreSQL (`postgres` on `artisan-hq-network-01`), external Postfix relay, and Traefik for TLS termination and routing. See [TRAEFIK.md](TRAEFIK.md) for details.
 
@@ -99,6 +100,23 @@ curl -I https://auth.artisan-tools.com
 docker exec artisan-auth-core ak healthcheck
 ```
 
+### 5. LDAP outpost (optional)
+
+The `ldap` service (prod only) exposes Authentik as an LDAP/LDAPS directory on host ports 389/636. Its image tag **must always match** the core/worker tag — mismatched core/outpost versions are unsupported and can fail in non-obvious ways (the admin UI's outpost health panel shows version mismatches) — so upgrade all three together.
+
+Bootstrap order (the outpost needs an API token that only exists after the outpost is created in Authentik):
+
+1. In the Authentik admin UI (`https://auth.artisan-tools.com`): create an **LDAP Provider** (set Base DN, e.g. `dc=ldap,dc=goauthentik,dc=io`, and a bind flow), an **Application** bound to it, and an **Outpost** of type LDAP referencing that application. Set the outpost's **Integration** to `----` (none) — this deployment is managed by compose; selecting Docker would make Authentik try to spawn its own duplicate container.
+2. Copy the outpost's token (**Outposts → click the outpost → View deployment info**) into `AUTHENTIK_LDAP_TOKEN` in `.env`.
+3. Start it: `./scripts/up prod ldap`
+4. Verify: `./scripts/logs prod ldap` shows a successful websocket connection to core (no 403s), and `ss -tlnp | grep -E ':(389|636)\b'` shows both ports bound. Then do a real bind, e.g. `ldapsearch -x -H ldap://<host> -D "cn=<user>,ou=users,<base-dn>" -w <pass> -b "<base-dn>"`.
+
+> **LDAPS note:** port 636 is published, but LDAPS only actually works once a **Certificate** (and TLS Server Name) is set on the LDAP provider. Until then the socket accepts TCP connections and every TLS handshake fails — a bound port is not proof of working LDAPS. Plain LDAP on 389 works immediately (LAN only; credentials travel unencrypted).
+
+The outpost is stateless (no volumes) and pulls all config from the Authentik API over the internal Docker network — it is **not** routed through Traefik.
+
+> **Firewall note:** Docker-published ports bypass ufw INPUT rules, and the `DOCKER-USER` chain sees packets **after DNAT** — so rules there must match the container-side ports `3389`/`6636` (or use `-m conntrack --ctorigdstport 389`/`636`), not 389/636. Example: allow tcp dport 3389/6636 from `192.168.100.0/24`, drop other sources, in `DOCKER-USER`. Binding the ports to the LAN IP in the compose file (`192.168.100.71:389:3389`) limits which interface listens but is **not** a source-subnet ACL.
+
 ## Scripts
 
 All scripts require an environment as the first argument: `dev` or `prod`.
@@ -121,7 +139,8 @@ All scripts require an environment as the first argument: `dev` or `prod`.
 | `auth` | `core` | Authentik server |
 | `db` | `postgres` | Dev only |
 | `mail` | `mailpit` | Dev only |
-| `all` | env-dependent | Dev: all 5 services; Prod: core + worker |
+| `ldap` | `ldap` | Direct name, prod only (LDAP outpost) |
+| `all` | env-dependent | Dev: all 5 services; Prod: core + worker + ldap |
 
 ## Custom Branding
 
@@ -163,6 +182,7 @@ See `.env.example` for all options with descriptions.
 | Variable | Description |
 |---|---|
 | `AUTHENTIK_SECRET_KEY` | Secret key for Authentik (required) |
+| `AUTHENTIK_LDAP_TOKEN` | API token for the LDAP outpost, prod only (see LDAP outpost section) |
 | `APP_PORT_HTTP` | HTTP port, dev only (default: `80`) |
 | `APP_PORT_HTTPS` | HTTPS port, dev only (default: `443`) |
 | `POSTGRES_HOST` | PostgreSQL hostname (default: `postgres`) |

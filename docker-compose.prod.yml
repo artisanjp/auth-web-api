@@ -63,6 +63,32 @@ services:
     labels:
       - "traefik.enable=false"
 
+  ldap:
+    # LDAP outpost — MUST stay on the same version tag as core/worker
+    # (core/outpost version skew causes silent failures).
+    image: ghcr.io/goauthentik/ldap:2025.10
+    container_name: artisan-auth-ldap
+    restart: unless-stopped
+    depends_on:
+      - core
+    environment:
+      # Outpost -> core stays inside the docker network (plain HTTP on 9000),
+      # hence AUTHENTIK_INSECURE.
+      AUTHENTIK_HOST: http://artisan-auth-core:9000
+      AUTHENTIK_INSECURE: "true"
+      # Empty default (not :?) so a missing token never blocks compose
+      # operations on core/worker; an empty token surfaces as 403s in the
+      # ldap container logs instead.
+      AUTHENTIK_TOKEN: ${AUTHENTIK_LDAP_TOKEN:-}
+    ports:
+      # The outpost listens on 3389/6636 internally (non-root).
+      - "389:3389" # LDAP
+      - "636:6636" # LDAPS
+    networks:
+      - artisan-hq-network-01
+    labels:
+      - "traefik.enable=false"
+
 networks:
   artisan-hq-network-01:
     external: true
