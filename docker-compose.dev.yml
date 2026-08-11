@@ -46,6 +46,9 @@ services:
       - artisan-auth-templates:/templates
     networks:
       - artisan-auth-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
 
   worker:
     image: authentik/server:2025.10
@@ -75,6 +78,8 @@ services:
       - artisan-auth-templates:/templates
     networks:
       - artisan-auth-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   nginx:
     image: nginx:alpine
