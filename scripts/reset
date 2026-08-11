@@ -4,7 +4,9 @@
 # Usage: scripts/reset <environment> <volume|all>
 #
 # Environments: dev, prod
-# Volumes: postgres, media, templates, all
+# Volumes: postgres, templates, all
+# (Authentik media/storage is a bind mount at ./data, not a volume —
+#  clear runtime uploads manually; data/media/custom/ is git-tracked)
 #
 # Examples:
 #   scripts/reset dev postgres     => Remove postgres volume (dev only)
@@ -34,18 +36,17 @@ show_usage() {
     echo ""
     echo "Dev Volumes:"
     echo "  postgres   - PostgreSQL data"
-    echo "  media      - Authentik media files"
     echo "  templates  - Authentik templates"
     echo "  all        - All dev volumes"
     echo ""
     echo "Prod Volumes:"
-    echo "  media      - Authentik media files"
     echo "  templates  - Authentik templates"
     echo "  all        - All prod volumes"
     echo ""
+    echo "Note: media/storage is a bind mount at ./data (not a volume)."
+    echo ""
     echo "Examples:"
     echo "  $0 dev postgres     # Remove postgres volume (dev only)"
-    echo "  $0 dev media        # Remove media volume"
     echo "  $0 dev all          # Remove all dev volumes"
     echo "  $0 prod all         # Remove all prod volumes"
 }
@@ -108,19 +109,16 @@ main() {
                 fi
                 VOLUME_NAME="auth-web-api_artisan-auth-postgres-data"
                 ;;
-            media)
-                VOLUME_NAME="auth-web-api_artisan-auth-media"
-                ;;
             templates)
                 VOLUME_NAME="auth-web-api_artisan-auth-templates"
                 ;;
             *)
                 if [ "$environment" == "prod" ]; then
                     print_error "Unknown volume '$service'"
-                    print_info "Available volumes: media, templates, all"
+                    print_info "Available volumes: templates, all"
                 else
                     print_error "Unknown volume '$service'"
-                    print_info "Available volumes: postgres, media, templates, all"
+                    print_info "Available volumes: postgres, templates, all"
                 fi
                 exit 1
                 ;;
@@ -142,7 +140,7 @@ main() {
                 docker compose -f "$compose_file" stop postgres 2>/dev/null || true
                 docker compose -f "$compose_file" rm -f postgres 2>/dev/null || true
                 ;;
-            media|templates)
+            templates)
                 print_info "Stopping core and worker containers..."
                 docker compose -f "$compose_file" stop core worker 2>/dev/null || true
                 docker compose -f "$compose_file" rm -f core worker 2>/dev/null || true

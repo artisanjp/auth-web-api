@@ -4,7 +4,7 @@
 # Usage: scripts/restart <environment> <service1> [service2] [service3] ...
 #
 # Environments: dev, prod
-# Services: auth, db, mail, all (or direct names: core, postgres, worker, nginx, mailpit)
+# Services: auth, db, mail, all (or direct names: core, postgres, worker, nginx, mailpit, ldap)
 #
 # Examples:
 #   scripts/restart dev all        => Restart all services in dev
@@ -35,7 +35,7 @@ show_usage() {
     echo "  db    - PostgreSQL database (maps to 'postgres', dev only)"
     echo "  mail  - Mailpit email testing (maps to 'mailpit', dev only)"
     echo "  all   - All services (env-dependent)"
-    echo "  core, worker, postgres, nginx, mailpit - Direct service names"
+    echo "  core, worker, postgres, nginx, mailpit, ldap - Direct service names"
     echo ""
     echo "Examples:"
     echo "  $0 dev all        # Restart all dev services"

@@ -39,6 +39,7 @@ cp .env.example .env
 
 Edit `.env` and fill in the required values:
 
+- `AUTHENTIK_TAG` -- the Authentik version to run (required, no default; see [Upgrading Authentik](#upgrading-authentik))
 - `AUTHENTIK_SECRET_KEY` -- generate with `openssl rand -base64 32`
 - `POSTGRES_PASSWORD` -- generate with `openssl rand -base64 24`
 
@@ -76,6 +77,7 @@ cp .env.example .env
 
 Edit `.env` with production values:
 
+- `AUTHENTIK_TAG` -- the Authentik version to run (required, no default; see [Upgrading Authentik](#upgrading-authentik))
 - `AUTHENTIK_SECRET_KEY` -- generate with `openssl rand -base64 32`
 - `POSTGRES_HOST=postgres` (external container on artisan-hq-network-01)
 - `POSTGRES_PASSWORD` -- the external postgres password
@@ -142,27 +144,39 @@ All scripts require an environment as the first argument: `dev` or `prod`.
 | `ldap` | `ldap` | Direct name, prod only (LDAP outpost) |
 | `all` | env-dependent | Dev: all 5 services; Prod: core + worker + ldap |
 
+## Upgrading Authentik
+
+The version is pinned by `AUTHENTIK_TAG` in `.env` — one variable shared by `core`, `worker`, and the `ldap` outpost so they can never run different versions. Compose refuses every command until it is set.
+
+Rules:
+
+1. **Upgrade sequentially, one release at a time** (e.g. `2025.10 → 2025.12 → 2026.2 → 2026.5`). Never skip releases — migrations assume the previous release's schema.
+2. Per hop: bump `AUTHENTIK_TAG` in `.env` → `docker compose -f docker-compose.<env>.yml pull core worker` → `./scripts/up <env> core worker` → watch `./scripts/logs <env> core` until migrations finish → `docker exec artisan-auth-core ak healthcheck` → log in via the UI. Only proceed to the next hop when healthy.
+3. **Back up the database first** (prod: dump the authentik DB on the external postgres before the first hop).
+4. Keep hops scoped to `core worker`. If the `ldap` outpost is running, **stop it before the first hop** (`./scripts/down <env> ldap`) and start it again only once the final version is reached — a running outpost on the old version violates the server/outpost version-match requirement mid-upgrade.
+5. Read the upstream release notes for every hop: <https://docs.goauthentik.io/releases/>. Known one-time steps: 2025.12 requires unique group names (pre-check: `SELECT name, count(*) FROM authentik_core_group GROUP BY name HAVING count(*) > 1;`), moves storage from `/media` to `/data` — this repo's compose and the git-tracked `data/media/public/` layout already reflect it, but any **untracked runtime uploads** still under `./media` on a deployment host must be merged once, with the stack stopped, after pulling: `mkdir -p data/media && if [ -d media ]; then cp -a media/. data/media/ && rm -rf media; fi` (preserves ownership/permissions via `cp -a`) — and it changes file serving to signed `/files/...` URLs with picker paths relative to `/data/media/public/` — re-enter the Brand asset fields (see Custom Branding) right after that hop and verify the icons render. 2026.5 switches the default listen address to `[::]`; see the fallback note in `.env.example` if the host has IPv6 disabled.
+
 ## Custom Branding
 
-Place brand assets in `media/custom/`. These files are bind-mounted into the Authentik containers at `/media/custom/` and served at `https://<your-domain>/media/custom/`.
+Place brand assets in `data/media/public/custom/`. The `./data` directory is bind-mounted into the Authentik containers at `/data`; the file picker only sees files under `/data/media/public/`. Since 2025.12, authentik serves these files via short-lived signed `/files/...` URLs — there is no fixed public URL you can hit directly; verify by checking that the assets render in the UI.
 
 Current assets:
 
 | File | Purpose |
 |---|---|
-| `media/custom/icon.png` | Brand icon (favicon, app icon) |
-| `media/custom/icon_left_brand.svg` | Logo shown in the top-left of the UI |
-| `media/custom/flow_background.png` | Background image for login/flow pages |
+| `data/media/public/custom/icon.png` | Brand icon (favicon, app icon) |
+| `data/media/public/custom/icon_left_brand.svg` | Logo shown in the top-left of the UI |
+| `data/media/public/custom/flow_background.png` | Background image for login/flow pages |
 
-To apply, go to **Admin → System → Brands**, edit the brand, and set the paths:
+To apply, go to **Admin → System → Brands**, edit the brand, and set the fields to paths **relative to `/data/media/public/`, without a leading slash**:
 
 | Field | Value |
 |---|---|
-| Icon | `/media/custom/icon.png` |
-| Logo | `/media/custom/icon_left_brand.svg` |
-| Flow background | `/media/custom/flow_background.png` |
+| Favicon | `custom/icon.png` |
+| Logo | `custom/icon_left_brand.svg` |
+| Flow background | `custom/flow_background.png` |
 
-After adding or changing files, restart the services for the bind-mount to take effect.
+Changes to files in the bind mount are visible to the containers immediately — no restart needed.
 
 ### Changing the welcome message
 
@@ -181,6 +195,8 @@ See `.env.example` for all options with descriptions.
 
 | Variable | Description |
 |---|---|
+| `AUTHENTIK_TAG` | Authentik version tag, shared by core/worker/ldap (required, no default) |
+| `AUTHENTIK_IMAGE` | Server image registry override (default: `ghcr.io/goauthentik/server`) |
 | `AUTHENTIK_SECRET_KEY` | Secret key for Authentik (required) |
 | `AUTHENTIK_LDAP_TOKEN` | API token for the LDAP outpost, prod only (see LDAP outpost section) |
 | `APP_PORT_HTTP` | HTTP port, dev only (default: `80`) |

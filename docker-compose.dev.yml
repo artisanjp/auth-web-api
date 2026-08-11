@@ -19,7 +19,7 @@ services:
       - artisan-auth-network
 
   core:
-    image: authentik/server:2025.10
+    image: ${AUTHENTIK_IMAGE:-ghcr.io/goauthentik/server}:${AUTHENTIK_TAG:?Set AUTHENTIK_TAG in the env file - upgrade sequentially, see README}
     container_name: artisan-auth-core
     restart: unless-stopped
     command: server
@@ -42,7 +42,7 @@ services:
       AUTHENTIK_EMAIL__USE_SSL: ${SMTP_USE_SSL:-false}
       AUTHENTIK_EMAIL__FROM: ${SMTP_FROM:-noreply@auth.artisan-tools.com}
     volumes:
-      - ./media:/media
+      - ./data:/data
       - artisan-auth-templates:/templates
     networks:
       - artisan-auth-network
@@ -51,7 +51,7 @@ services:
 
 
   worker:
-    image: authentik/server:2025.10
+    image: ${AUTHENTIK_IMAGE:-ghcr.io/goauthentik/server}:${AUTHENTIK_TAG:?Set AUTHENTIK_TAG in the env file - upgrade sequentially, see README}
     container_name: artisan-auth-worker
     restart: unless-stopped
     command: worker
@@ -74,7 +74,7 @@ services:
       AUTHENTIK_EMAIL__USE_SSL: ${SMTP_USE_SSL:-false}
       AUTHENTIK_EMAIL__FROM: ${SMTP_FROM:-noreply@auth.artisan-tools.com}
     volumes:
-      - ./media:/media
+      - ./data:/data
       - artisan-auth-templates:/templates
     networks:
       - artisan-auth-network

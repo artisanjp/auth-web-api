@@ -118,7 +118,9 @@ parse_flags() {
                 ;;
         esac
     done
-    printf '%s\n' "${flags[@]}"
+    if [ ${#flags[@]} -gt 0 ]; then
+        printf '%s\n' "${flags[@]}"
+    fi
 }
 
 main() {

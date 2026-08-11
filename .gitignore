@@ -6,6 +6,13 @@
 # SSL certificates (generated locally)
 certs/
 
+# Authentik runtime storage (uploads etc.) — only the tracked branding
+# assets under data/media/public/custom/ belong in git
+data/media/*
+!data/media/public/
+data/media/public/*
+!data/media/public/custom/
+
 # OS
 .DS_Store
 Thumbs.db

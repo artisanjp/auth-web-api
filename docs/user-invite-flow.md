@@ -25,7 +25,7 @@ How admins generate invite tokens/links.
 | `fixed_data` | JSON | Attributes passed to enrollment flow | `{"email": "jane@co.com", "username": "jane@co.com"}` |
 | `flow` | UUID | Override enrollment flow (optional) | Leave unset for default |
 
-### Warning: Authentik Invitation Flow is Broken (as of 2025.10)
+### Warning: Authentik Invitation Flow is Broken (as of 2025.10; re-test after the 2026.5 upgrade — the behavior may have changed in 2025.12+)
 
 Authentik's invitation system has a critical bug: **invitations are deleted on first page load regardless of the `single_use` setting**. Even with `single_use: false`, the invite is consumed the moment the link is opened — not when registration completes.
 

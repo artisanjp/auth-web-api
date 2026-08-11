@@ -51,7 +51,6 @@ reset - Remove Docker volumes (with confirmation)
    Usage: scripts/reset <dev|prod> <volume|all>
    Examples:
      scripts/reset dev postgres    # Remove postgres volume (dev only)
-     scripts/reset dev media       # Remove media volume
      scripts/reset dev all         # Remove all dev volumes
      scripts/reset prod all        # Remove all prod volumes
 
@@ -69,23 +68,24 @@ Service Aliases:
   all    -> all services (env-dependent)
 
 Direct Service Names:
-  core, worker, postgres, nginx, mailpit
+  core, worker, postgres, nginx, mailpit, ldap
 
 Dev Services (all):
   postgres, core, worker, nginx, mailpit
 
 Prod Services (all):
-  core, worker
-  (Traefik handles TLS/routing externally)
+  core, worker, ldap
+  (Traefik handles TLS/routing externally; ldap publishes 389/636 directly)
 
 Dev Volumes:
   postgres   (PostgreSQL data)
-  media      (Authentik media files)
   templates  (Authentik templates)
 
 Prod Volumes:
-  media      (Authentik media files)
   templates  (Authentik templates)
+
+Note: Authentik media/storage is a bind mount at ./data (not a volume).
+Branding assets in data/media/custom/ are git-tracked.
 
 ============================================
 EOF
